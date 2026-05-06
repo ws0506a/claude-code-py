@@ -16,7 +16,7 @@ dependencies = [
 dev = ["pytest>=7.0"]
 
 [project.scripts]
-claude-code = "src.main:main"
+qingcode = "src.main:main"
 
 [build-system]
 requires = ["setuptools>=61.0"]

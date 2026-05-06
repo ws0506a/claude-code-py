@@ -13,7 +13,7 @@ _console = Console()
 
 
 @click.command()
-@click.option("--model", default=None, help="Model name. Falls back to $CLAUDE_CODE_MODEL or 'gpt-4.1-mini'.")
+@click.option("--model", default=None, help="Model name. Falls back to $QINGCODE_MODEL or 'gpt-4.1-mini'.")
 @click.option("--base-url", default=None, help="OpenAI-compatible base URL. Falls back to $OPENAI_BASE_URL.")
 @click.option("--yolo", is_flag=True, help="Skip confirmation prompts for write/edit/shell tools.")
 def main(model: str | None, base_url: str | None, yolo: bool) -> None:
@@ -25,11 +25,11 @@ def main(model: str | None, base_url: str | None, yolo: bool) -> None:
         _console.print("[bold red]OPENAI_API_KEY not set.[/bold red] Put it in .env or export it.")
         sys.exit(1)
 
-    model = model or os.getenv("CLAUDE_CODE_MODEL") or "gpt-4.1-mini"
+    model = model or os.getenv("QINGCODE_MODEL") or "gpt-4.1-mini"
     set_yolo(yolo)
 
     banner = (
-        f"[bold blue]claude-code-py[/bold blue]\n"
+        f"[bold blue]qingcode[/bold blue]\n"
         f"model: [cyan]{model}[/cyan]"
         + (f"  base_url: [cyan]{base_url or os.getenv('OPENAI_BASE_URL')}[/cyan]" if (base_url or os.getenv("OPENAI_BASE_URL")) else "")
         + ("\n[yellow]YOLO mode: confirmations disabled[/yellow]" if yolo else "")

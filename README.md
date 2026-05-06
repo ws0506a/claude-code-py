@@ -1,4 +1,4 @@
-# claude-code-py
+# qingcode-py
 
 A terminal AI coding assistant in the spirit of [Claude Code](https://claude.com/claude-code), written in Python. Talks to **any OpenAI-compatible API** — OpenAI, DeepSeek, Qwen (DashScope), Moonshot/Kimi, Together, local vLLM/Ollama, etc.
 
@@ -26,7 +26,7 @@ A terminal AI coding assistant in the spirit of [Claude Code](https://claude.com
 
 ```bash
 git clone <this-repo>
-cd claude-code-py
+cd qingcode-py
 python -m venv .venv
 # macOS/Linux:  source .venv/bin/activate
 # Windows:      .venv\Scripts\activate
@@ -50,26 +50,26 @@ OPENAI_API_KEY=sk-...
 # DeepSeek
 OPENAI_API_KEY=sk-...
 OPENAI_BASE_URL=https://api.deepseek.com/v1
-CLAUDE_CODE_MODEL=deepseek-chat
+QINGCODE_MODEL=deepseek-chat
 
 # Qwen (DashScope)
 OPENAI_API_KEY=sk-...
 OPENAI_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
-CLAUDE_CODE_MODEL=qwen-plus
+QINGCODE_MODEL=qwen-plus
 
 # Local (Ollama / vLLM)
 OPENAI_API_KEY=ollama
 OPENAI_BASE_URL=http://localhost:11434/v1
-CLAUDE_CODE_MODEL=qwen2.5-coder:14b
+QINGCODE_MODEL=qwen2.5-coder:14b
 ```
 
 ## Run
 
 ```bash
-claude-code                              # use .env defaults
-claude-code --model deepseek-chat        # override model for this session
-claude-code --base-url http://...        # override base URL
-claude-code --yolo                       # skip y/N confirmations
+qingcode                              # use .env defaults
+qingcode --model deepseek-chat        # override model for this session
+qingcode --base-url http://...        # override base URL
+qingcode --yolo                       # skip y/N confirmations
 ```
 
 Then talk to it:

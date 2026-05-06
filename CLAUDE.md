@@ -4,40 +4,47 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Python re-implementation of a Claude Code-style terminal AI assistant. Despite the name, it talks to the **OpenAI Chat Completions API** (default model `gpt-4.1-mini`), not Anthropic's. The OpenAI SDK is initialized with no explicit base URL, so it reads `OPENAI_API_KEY` (and optionally `OPENAI_BASE_URL`) from the environment / `.env`.
+Terminal AI coding assistant in the spirit of Claude Code, written in Python. The CLI command is **`qingcode`**. The agent talks to any **OpenAI-compatible** endpoint via the `openai` SDK — set `OPENAI_BASE_URL` to point at DeepSeek, Qwen (DashScope), Moonshot/Kimi, vLLM, Ollama, etc. There is no Anthropic SDK in this codebase.
 
 ## Commands
 
 ```bash
-pip install -e .            # editable install; registers the `claude-code` script
-claude-code                 # start the REPL (default model gpt-4.1-mini)
-claude-code --model <name>  # override model
-python tests/test_basic.py  # run the basic tool smoke test (script-style, not pytest)
+pip install -e .            # editable install; registers the `qingcode` script
+pip install -e ".[dev]"     # also installs pytest
+qingcode                    # start the REPL (uses .env)
+qingcode --model <name>     # override model for this session
+qingcode --base-url <url>   # override OPENAI_BASE_URL
+qingcode --yolo             # skip y/N confirmations on write/edit/shell
+pytest                      # run tool tests (no model calls)
+pytest tests/test_basic.py::test_edit_unique_replacement  # single test
 ```
 
-There is no linter, formatter, or pytest setup configured.
+`OPENAI_API_KEY` is required (loaded from `.env` via python-dotenv). `QINGCODE_MODEL` and `OPENAI_BASE_URL` are optional fallbacks for `--model` / `--base-url`.
 
 ## Architecture
 
-Three files under `src/` form a tight loop:
+The package is imported as `src` (per `pyproject.toml`), so intra-package imports use relative form (`from .tools import ...`).
 
-- **`src/main.py`** — Click CLI. Reads a line, calls `agent.chat()`, repeats. `exit`/`quit` ends the session. All output goes through `rich.Console`.
-- **`src/agent.py`** — `ClaudeAgent` owns the message history. `chat()` runs an inner loop: send `messages + TOOL_DEFINITIONS` to `client.chat.completions.create(tool_choice="auto")`, append the assistant message, and if there are `tool_calls`, execute each via `execute_tool()`, append a `role: "tool"` result, then loop again. Loop exits only when the model returns a message with no tool calls. Tool results are truncated to 2000 chars before being appended to history.
-- **`src/tools.py`** — Defines four tools: `list_files`, `read_file`, `write_file`, `execute_shell`. `TOOL_DEFINITIONS` is the OpenAI-format JSON schema list; `execute_tool(name, args)` dispatches to the Python implementations. `execute_shell` runs `subprocess.run(command, shell=True, ...)` with a 30s timeout and **no sandboxing** — any agent run can modify the filesystem and execute arbitrary commands in the cwd.
-
-The package is imported as `src` (per `pyproject.toml` `packages = ["src"]` and the `src.main:main` entry point), so intra-package imports use relative form (`from .agent import ...`).
+- **`src/main.py`** — Click CLI. Loads `.env`, sets the global YOLO flag, instantiates `Agent`, runs the REPL. Ctrl-C cancels the current turn without quitting; Ctrl-D / `exit` / `quit` quits.
+- **`src/agent.py`** — `Agent` owns the message history. `chat()` runs an inner loop: send `messages + TOOL_DEFINITIONS` with `tool_choice="auto"`, append the assistant message, dispatch each tool call via `execute_tool()`, append `role: "tool"` results, repeat until the model returns no `tool_calls`. Tool results are truncated to 4000 chars in history; a 400-char preview is rendered to the console.
+- **`src/confirm.py`** — Module-level `_yolo` flag plus `confirm(action, detail)`. Returns True under `--yolo`, False on non-TTY stdin, otherwise prompts y/N. Imported by any tool that mutates state.
+- **`src/tools/`** — Tool implementations + the OpenAI-format `TOOL_DEFINITIONS` list and the `execute_tool(name, args)` dispatcher (in `__init__.py`).
+  - `fs.py` — `list_files`, `read_file` (with line numbers, optional `offset`/`limit`), `write_file` (confirm), `edit` (unique-string replace; rejects ambiguous matches unless `replace_all=True`; confirm).
+  - `search.py` — `grep` (Python `re` over files, optional glob filter, max 200 hits) and `glob_files` (registered as `glob`). Both skip a default ignore set (`.git`, `__pycache__`, `node_modules`, `.venv`, etc.).
+  - `shell.py` — `execute_shell` via `subprocess.run(shell=True, ...)`, 60 s default timeout, **no sandboxing** (confirm).
+  - `todos.py` — Module-level `_todos: list[Todo]`. `todo_write` replaces the whole list; `todo_read` renders it. State is per-process — lost when `qingcode` exits.
 
 ### Adding a tool
 
-1. Implement the function in `src/tools.py` (return a string — results are passed back to the model as text).
-2. Append a JSON-schema entry to `TOOL_DEFINITIONS`.
-3. Add a branch in `execute_tool()`.
+1. Implement in the appropriate `src/tools/<area>.py`. Return a string — it is sent back to the model as the tool message content.
+2. Append a JSON-schema entry to `TOOL_DEFINITIONS` in `src/tools/__init__.py`.
+3. Add a branch in `execute_tool()` in the same file.
+4. If the tool mutates state, call `confirm(action, detail)` first and bail out with a `"User declined ..."` string when it returns False.
 
 ### Initial context injection
 
-`ClaudeAgent.__init__` runs `os.listdir(".")` and appends the result as a second system message. The cwd at launch time is what the agent sees as "the project."
+`Agent.__init__` appends a second system message containing `os.getcwd()` and up to 30 sorted entries from the cwd. The cwd at launch determines what the agent sees as "the project" — running `qingcode` in the wrong directory is the most common confusion.
 
-## Notes / gotchas
+## Test conventions
 
-- `setup.py` declares the console script as `main:main` while `pyproject.toml` declares it as `src.main:main`. The pyproject form is the one that works after `pip install -e .`; treat `setup.py` as stale.
-- The README claims Anthropic API support, but `agent.py` only ever calls the OpenAI SDK.
+`tests/test_basic.py` is pytest-based. Two autouse fixtures matter: `_yolo_on` flips confirmation off during tests, and `_reset_todos` clears the module-level todo list between tests. Tests use `tmp_path` and never hit the network or call a model.
