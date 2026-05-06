@@ -13,7 +13,7 @@ except Exception:
     pass
 
 # Mirror the loading logic from src/main.py
-load_dotenv()
+load_dotenv(override=True)
 package_env = Path(__file__).resolve().parent.parent / ".env"
 if package_env.is_file():
     load_dotenv(package_env, override=False)

@@ -20,10 +20,12 @@ _console = Console()
 @click.option("--yolo", is_flag=True, help="Skip confirmation prompts for write/edit/shell tools.")
 def main(model: str | None, base_url: str | None, yolo: bool) -> None:
     """A terminal AI coding assistant — works with any OpenAI-compatible API."""
-    # 1. cwd .env wins (so per-project overrides work)
-    load_dotenv()
-    # 2. fall back to .env next to the installed package (covers users who
-    #    launch qingcode from a directory that has no .env of its own)
+    # 1. cwd .env wins, AND overrides existing env vars — users editing .env
+    #    expect it to take effect even if a stale OPENAI_API_KEY lives in their
+    #    system environment.
+    load_dotenv(override=True)
+    # 2. fall back to .env next to the installed package (only fills holes left
+    #    by step 1).
     package_env = Path(__file__).resolve().parent.parent / ".env"
     if package_env.is_file():
         load_dotenv(package_env, override=False)
