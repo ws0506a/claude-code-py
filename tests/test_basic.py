@@ -103,3 +103,56 @@ def test_todo_roundtrip():
 
 def test_unknown_tool():
     assert "unknown tool" in execute_tool("does_not_exist", {})
+
+
+# ---------- session persistence ----------
+class _StubAgent:
+    def __init__(self):
+        self.model = "test-model"
+        self.messages = [
+            {"role": "system", "content": "sys"},
+            {"role": "user", "content": "hi"},
+            {"role": "assistant", "content": "hello"},
+        ]
+        self.usage = {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15, "turns": 1}
+        self._system_prefix_len = 1
+
+
+def test_session_save_and_load(tmp_path, monkeypatch):
+    from src import session as session_mod
+
+    monkeypatch.setattr(session_mod, "SESSIONS_DIR", tmp_path)
+    agent = _StubAgent()
+
+    path = session_mod.new_session_path()
+    session_mod.save(path, agent)
+    assert path.is_file()
+
+    fresh = _StubAgent()
+    fresh.messages = []
+    fresh.usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0, "turns": 0}
+    session_mod.load(path, fresh)
+
+    assert len(fresh.messages) == 3
+    assert fresh.usage["total_tokens"] == 15
+    assert fresh.model == "test-model"
+    assert fresh._system_prefix_len == 1
+
+
+def test_session_resolve_by_index(tmp_path, monkeypatch):
+    from src import session as session_mod
+    import time
+
+    monkeypatch.setattr(session_mod, "SESSIONS_DIR", tmp_path)
+    agent = _StubAgent()
+
+    p1 = session_mod.new_session_path()
+    session_mod.save(p1, agent)
+    time.sleep(0.05)
+    # second path may collide on same timestamp; force a new name
+    p2 = tmp_path / "later.json"
+    session_mod.save(p2, agent)
+
+    assert session_mod.latest_session() == p2
+    assert session_mod.resolve("0") == p2
+    assert session_mod.resolve("later") == p2
