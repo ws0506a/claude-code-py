@@ -1,6 +1,7 @@
 """CLI entry point."""
 import os
 import sys
+from pathlib import Path
 import click
 from dotenv import load_dotenv
 from rich.console import Console
@@ -19,7 +20,13 @@ _console = Console()
 @click.option("--yolo", is_flag=True, help="Skip confirmation prompts for write/edit/shell tools.")
 def main(model: str | None, base_url: str | None, yolo: bool) -> None:
     """A terminal AI coding assistant — works with any OpenAI-compatible API."""
+    # 1. cwd .env wins (so per-project overrides work)
     load_dotenv()
+    # 2. fall back to .env next to the installed package (covers users who
+    #    launch qingcode from a directory that has no .env of its own)
+    package_env = Path(__file__).resolve().parent.parent / ".env"
+    if package_env.is_file():
+        load_dotenv(package_env, override=False)
 
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
