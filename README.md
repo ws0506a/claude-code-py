@@ -82,6 +82,22 @@ Then talk to it:
 
 `exit` / `quit` / Ctrl-D leaves the session. Ctrl-C cancels the current turn without quitting.
 
+### Slash commands
+
+Inside the REPL, lines starting with `/` are handled locally — they don't go to the model.
+
+| command | description |
+| --- | --- |
+| `/help` | list all commands |
+| `/model [name]` | show or change the current model |
+| `/clear` | clear conversation history (keeps system prompt + cwd) |
+| `/cwd` | show the working directory |
+| `/cd <path>` | change working directory (also clears history) |
+| `/yolo [on\|off]` | toggle confirmation skipping |
+| `/baseurl` | show the OpenAI-compatible base URL in use |
+| `/history` | show how many messages the agent is holding |
+| `/exit` | leave the REPL |
+
 ## Development
 
 ```bash

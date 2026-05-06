@@ -7,6 +7,7 @@ from rich.console import Console
 from rich.panel import Panel
 
 from .agent import Agent
+from .commands import handle as handle_slash
 from .confirm import set_yolo
 
 _console = Console()
@@ -33,7 +34,7 @@ def main(model: str | None, base_url: str | None, yolo: bool) -> None:
         f"model: [cyan]{model}[/cyan]"
         + (f"  base_url: [cyan]{base_url or os.getenv('OPENAI_BASE_URL')}[/cyan]" if (base_url or os.getenv("OPENAI_BASE_URL")) else "")
         + ("\n[yellow]YOLO mode: confirmations disabled[/yellow]" if yolo else "")
-        + "\nType 'exit' or Ctrl-D to quit. Ctrl-C cancels the current turn."
+        + "\nType '/help' for commands. 'exit' or Ctrl-D to quit. Ctrl-C cancels the current turn."
     )
     _console.print(Panel(banner, title="welcome"))
 
@@ -46,10 +47,20 @@ def main(model: str | None, base_url: str | None, yolo: bool) -> None:
             _console.print()
             break
 
-        if user_input.strip().lower() in {"exit", "quit"}:
+        stripped = user_input.strip()
+        if stripped.lower() in {"exit", "quit"}:
             break
-        if not user_input.strip():
+        if not stripped:
             continue
+        if stripped.startswith("/"):
+            try:
+                if handle_slash(stripped, agent):
+                    continue
+            except EOFError:
+                break
+            except Exception as e:
+                _console.print(f"[bold red]Command error:[/bold red] {e}")
+                continue
 
         try:
             agent.chat(user_input)

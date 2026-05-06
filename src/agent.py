@@ -34,15 +34,19 @@ class Agent:
             api_key=api_key or os.getenv("OPENAI_API_KEY"),
         )
         self.model = model
-        self.messages: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
+        self.messages: list[dict] = []
+        self.reset_messages()
 
+    def reset_messages(self) -> None:
+        """Reset history to just the system prompt + a fresh cwd snapshot."""
         try:
             cwd_listing = ", ".join(sorted(os.listdir("."))[:30])
         except OSError:
             cwd_listing = "(unavailable)"
-        self.messages.append(
-            {"role": "system", "content": f"Working directory: {os.getcwd()}\nTop-level entries: {cwd_listing}"}
-        )
+        self.messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": f"Working directory: {os.getcwd()}\nTop-level entries: {cwd_listing}"},
+        ]
 
     def chat(self, user_input: str) -> None:
         self.messages.append({"role": "user", "content": user_input})
